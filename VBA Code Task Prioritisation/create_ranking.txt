@@ -1,0 +1,158 @@
+Option Explicit
+
+Sub get_ranking()
+Dim WSD As Worksheet
+Dim WSDB As Worksheet
+Dim RankingTable As ListObject
+Dim DataTable As ListObject
+Dim temptable As ListObject
+Dim col_rank As Range
+Dim col_main_task As Range
+Dim col_task As Range
+Dim col_task_dash As Range
+Dim task_range As Range
+Dim rank_range As Range
+Dim input_range As Range
+Dim task_arr() As Variant
+Dim main_task_arr() As Variant
+Dim main_arr() As Variant
+Dim components_arr() As Variant
+Dim i As Integer
+Dim n As Integer
+Dim x As Integer
+Dim finalrow_dash As Integer
+Dim finalrow_db As Integer
+Dim nextrow_main As Integer
+Dim firstrow_dash As Integer
+Dim counter As Integer
+Dim color_counter As Integer
+Dim index_dash As Integer
+Dim index_db As Integer
+Dim rank_main As Integer
+
+Set WSD = ThisWorkbook.Worksheets("Dashboard")
+Set WSDB = ThisWorkbook.Worksheets("Database")
+Set RankingTable = WSD.ListObjects("RankingTable")
+Set DataTable = WSDB.ListObjects("Database")
+Set col_main_task = DataTable.ListColumns("Main Task").DataBodyRange
+Set col_task = DataTable.ListColumns("Task").DataBodyRange
+counter = 0
+color_counter = 1
+
+Set rank_range = WSD.Range("A1:D100").Find(what:="Rank")
+firstrow_dash = rank_range.Row
+
+For i = RankingTable.ListRows.Count To 1 Step -1
+    RankingTable.ListRows(i).Delete
+Next i
+
+finalrow_db = WSDB.Cells(Rows.Count, 2).End(xlUp).Row
+For i = 1 To DataTable.ListRows.Count
+    Set task_range = WSDB.Range("C5:C" & finalrow_db).Find(what:=col_main_task(i), lookat:=xlWhole)
+    If Not task_range Is Nothing And Not col_task(i) = col_main_task(i) Then
+        ReDim Preserve main_task_arr(counter)
+        ReDim Preserve task_arr(counter)
+        main_task_arr(counter) = col_main_task(i)
+        task_arr(counter) = col_task(i)
+        counter = counter + 1
+    Else
+        RankingTable.ListRows.Add
+        Call insert_data("Task", i, RankingTable.ListRows.Count)
+        Call insert_data("Expected Duration", i, RankingTable.ListRows.Count)
+        Call insert_data("Score", i, RankingTable.ListRows.Count)
+        If col_task(i) = col_main_task(i) Then
+            RankingTable.ListRows(color_counter).Range.Interior.Color = RGB(182, 225, 169)
+        Else
+            RankingTable.ListRows(color_counter).Range.Interior.Color = RGB(148, 200, 219)
+        End If
+        color_counter = color_counter + 1
+    End If
+Next i
+
+finalrow_dash = WSD.Cells(Rows.Count, 2).End(xlUp).Row
+
+With RankingTable
+    .Range.Sort key1:=.ListColumns("Score").DataBodyRange, order1:=xlDescending, Header:=xlYes
+End With
+
+Set col_rank = RankingTable.ListColumns("Rank").DataBodyRange
+For i = 1 To RankingTable.ListRows.Count
+    col_rank(i) = i
+Next i
+
+counter = 0
+
+For i = 1 To DataTable.ListRows.Count
+    If col_main_task(i) = col_task(i) Then
+        ReDim Preserve main_arr(counter)
+        main_arr(counter) = col_main_task(i)
+        counter = counter + 1
+    End If
+Next i
+
+For i = LBound(main_arr) To UBound(main_arr)
+    ReDim components_arr(0)
+    counter = 0
+    For n = 1 To DataTable.ListRows.Count
+        If col_main_task(n) = main_arr(i) And col_main_task(n) <> col_task(n) Then
+            ReDim Preserve components_arr(counter)
+            components_arr(counter) = col_task(n)
+            counter = counter + 1
+        End If
+    Next n
+    
+    Set col_task_dash = RankingTable.ListColumns("Task").DataBodyRange
+    Set task_range = WSD.Range("C10").CurrentRegion.Find(what:=main_arr(i), lookat:=xlWhole)
+    x = 0
+    On Error Resume Next
+    index_dash = Application.WorksheetFunction.Match(main_arr(i), col_task_dash, 0)
+    On Error GoTo 0
+    rank_main = col_rank(index_dash)
+    For n = LBound(components_arr) To UBound(components_arr)
+        On Error Resume Next
+        index_db = Application.WorksheetFunction.Match(components_arr(n), col_task, 0)
+        On Error GoTo 0
+        WSD.Rows(task_range.Row + 1).Insert
+        RankingTable.ListRows(index_dash + 1).Range.Interior.Color = RGB(250, 128, 114)
+        Call insert_data("Task", index_db, index_dash + 1)
+        Call insert_data("Expected Duration", index_db, index_dash + 1)
+        Call insert_data("Score", index_db, index_dash + 1)
+    Next n
+    
+    WSD.Cells(task_range.Row + 1, rank_range.Column + 1).Resize(n, 3).Cut _
+    Destination:=WSD.Range("Z1")
+    Set input_range = WSD.Range("Z1").Resize(n, 3)
+    Set temptable = WSD.ListObjects.Add(xlSrcRange, input_range, , xlNo)
+    With temptable
+        .Range.Sort key1:=WSD.Range("AB2"), order1:=xlDescending, Header:=xlNo
+    End With
+    WSD.Range(WSD.Cells(2, 26), WSD.Cells(n + 1, 28)).Cut _
+    Destination:=WSD.Cells(task_range.Row + 1, rank_range.Column + 1)
+    For x = 1 To 3
+        WSD.Columns(26).Delete
+    Next x
+    
+    For x = 1 To n
+        col_rank(index_dash + x) = rank_main & "." & x
+    Next x
+    
+Next i
+
+Call get_statistics_data
+
+End Sub
+
+Public Sub insert_data(ByVal col_header As String, index_db, index_dash As Integer)
+Dim RankingTable As ListObject
+Dim DataTable As ListObject
+Dim col_dash As Range
+Dim col_db As Range
+
+Set RankingTable = Tabelle1.ListObjects("RankingTable")
+Set DataTable = Tabelle2.ListObjects("Database")
+Set col_dash = RankingTable.ListColumns(col_header).DataBodyRange
+Set col_db = DataTable.ListColumns(col_header).DataBodyRange
+
+col_dash(index_dash) = col_db(index_db)
+
+End Sub

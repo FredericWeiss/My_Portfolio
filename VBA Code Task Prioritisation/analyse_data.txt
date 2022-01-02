@@ -1,0 +1,71 @@
+Option Explicit
+
+Sub get_statistics_data()
+Dim WSD As Worksheet
+Dim WSP As Worksheet
+Dim RankingTable As ListObject
+Dim DataTable As ListObject
+Dim col_cluster_dash As Range
+Dim col_category_db As Range
+Dim col_duration_db As Range
+Dim gold_counter As Integer
+Dim silver_counter As Integer
+Dim bronze_counter As Integer
+Dim counter_category As Integer
+Dim i As Integer
+Dim n As Integer
+Dim nextrow As Integer
+Dim finalrow As Integer
+Dim sum_days As Double
+Dim cluster As String
+
+Set WSD = ThisWorkbook.Worksheets("Dashboard")
+Set WSP = ThisWorkbook.Worksheets("Pivot")
+Set RankingTable = WSD.ListObjects("RankingTable")
+Set DataTable = Tabelle2.ListObjects("Database")
+Set col_cluster_dash = RankingTable.ListColumns("Cluster").DataBodyRange
+Set col_category_db = DataTable.ListColumns("Category").DataBodyRange
+Set col_duration_db = DataTable.ListColumns("Expected Duration").DataBodyRange
+
+For i = 1 To RankingTable.ListRows.Count
+    cluster = col_cluster_dash(i)
+    Select Case cluster
+        Case "Gold"
+            gold_counter = gold_counter + 1
+        Case "Silver"
+            silver_counter = silver_counter + 1
+        Case "Bronze"
+            bronze_counter = bronze_counter + 1
+    End Select
+Next i
+
+WSP.Range("B2") = gold_counter
+WSP.Range("B3") = silver_counter
+WSP.Range("B4") = bronze_counter
+
+WSP.Range("A7:C20").Clear
+For i = 1 To DataTable.ListRows.Count
+    nextrow = WSP.Cells(Rows.Count, 1).End(xlUp).Row + 1
+    WSP.Cells(nextrow, 1) = col_category_db(i)
+Next i
+WSP.Range("A7:A" & nextrow).RemoveDuplicates Columns:=1, Header:=xlNo
+
+finalrow = WSP.Cells(Rows.Count, 1).End(xlUp).Row
+For i = 7 To finalrow
+    counter_category = 0
+    sum_days = 0
+    For n = 1 To DataTable.ListRows.Count
+        If WSP.Cells(i, 1) = col_category_db(n) Then
+            counter_category = counter_category + 1
+            sum_days = sum_days + col_duration_db(n)
+        End If
+    Next n
+    WSP.Cells(i, 2) = counter_category
+    WSP.Cells(i, 3) = sum_days
+Next i
+
+WSP.PivotTables("PivotTable1").RefreshTable
+WSP.PivotTables("PivotTable2").RefreshTable
+WSP.PivotTables("PivotTable5").RefreshTable
+    
+End Sub

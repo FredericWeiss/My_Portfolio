@@ -1,0 +1,58 @@
+Option Explicit
+
+Private Sub Worksheet_Activate()
+Dim WSD As Worksheet
+Dim WSDB As Worksheet
+Dim DataTable As ListObject
+Dim col_task As Range
+Dim selector As Variant
+Dim i As Integer
+
+Set WSD = ThisWorkbook.Worksheets("Dashboard")
+Set WSDB = ThisWorkbook.Worksheets("Database")
+Set DataTable = WSDB.ListObjects("Database")
+Set col_task = DataTable.ListColumns("Task").DataBodyRange
+Set selector = WSD.DropDowns("Dropdown 1")
+
+selector.RemoveAllItems
+
+For i = 1 To DataTable.ListRows.Count
+    selector.AddItem (col_task(i))
+Next i
+
+End Sub
+
+Private Sub Worksheet_Deactivate()
+Dim WSD As Worksheet
+Dim RankingTable As ListObject
+Dim DataTable As ListObject
+Dim col_task_dash As Range
+Dim col_task_db As Range
+Dim col_main_db As Range
+Dim selector As Variant
+Dim i As Integer
+Dim index_db As Integer
+
+Set WSD = ThisWorkbook.Worksheets("Dashboard")
+Set RankingTable = WSD.ListObjects("RankingTable")
+Set DataTable = Tabelle2.ListObjects("Database")
+Set col_task_db = DataTable.ListColumns("Task").DataBodyRange
+Set col_main_db = DataTable.ListColumns("Main Task").DataBodyRange
+Set selector = WSD.DropDowns("Dropdown 1")
+Set col_task_dash = RankingTable.ListColumns("Task").DataBodyRange
+
+For i = 1 To RankingTable.ListRows.Count
+    If RankingTable.ListRows(i).Range.Interior.Color = RGB(255, 215, 0) Then
+        On Error Resume Next
+        index_db = Application.WorksheetFunction.Match(col_task_dash(i), col_task_db, 0)
+        On Error GoTo 0
+        If col_task_db(index_db) = col_main_db(index_db) Then
+            RankingTable.ListRows(i).Range.Interior.Color = RGB(182, 225, 169)
+        ElseIf col_main_db(index_db) = "" Then
+            RankingTable.ListRows(i).Range.Interior.Color = RGB(148, 200, 219)
+        Else
+            RankingTable.ListRows(i).Range.Interior.Color = RGB(250, 128, 114)
+        End If
+    End If
+Next i
+End Sub
